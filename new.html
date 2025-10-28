@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carbon Footprint Calculator</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Use the Inter font, a clean sans-serif */
+        body {
+            font-family: "Inter", sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-2xl">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">Carbon Footprint Calculator</h1>
+        <p class="text-center text-gray-600 mb-8">Estimate your annual CO2e emissions.</p>
+
+        <form id="calculator-form" class="space-y-6">
+
+            <!-- Section 1: Household Energy -->
+            <div>
+                <h2 class="text-xl font-semibold text-green-700 mb-4 border-b pb-2">Household Energy</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="electricity" class="block text-sm font-medium text-gray-700">Electricity (kWh/year)</label>
+                        <input type="number" id="electricity" name="electricity" placeholder="e.g., 10000" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
+                    </div>
+                    <div>
+                        <label for="gas" class="block text-sm font-medium text-gray-700">Natural Gas (therms/year)</label>
+                        <input type="number" id="gas" name="gas" placeholder="e.g., 500" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
+                    </div>
+                    <div>
+                        <label for="oil" class="block text-sm font-medium text-gray-700">Heating Oil (gallons/year)</label>
+                        <input type="number" id="oil" name="oil" placeholder="e.g., 100" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Transportation -->
+            <div>
+                <h2 class="text-xl font-semibold text-blue-700 mb-4 border-b pb-2">Transportation</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="milesDriven" class="block text-sm font-medium text-gray-700">Miles Driven (per year)</label>
+                        <input type="number" id="milesDriven" name="milesDriven" placeholder="e.g., 12000" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="mpg" class="block text-sm font-medium text-gray-700">Car's MPG</label>
+                        <input type="number" id="mpg" name="mpg" placeholder="e.g., 25" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="milesFlown" class="block text-sm font-medium text-gray-700">Miles Flown (per year)</label>
+                        <input type="number" id="milesFlown" name="milesFlown" placeholder="e.g., 5000" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculate Button -->
+            <button type="submit" class="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold text-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200">
+                Calculate Footprint
+            </button>
+        </form>
+
+        <!-- Result Section (hidden by default) -->
+        <div id="result-container" class="hidden mt-8 text-center bg-gray-50 p-6 rounded-lg">
+            <h3 class="text-lg font-medium text-gray-600">Your Total Annual Footprint is:</h3>
+            <p id="result-kg" class="text-5xl font-bold text-green-700 my-2">0 kg</p>
+            <p id="result-tonnes" class="text-2xl text-gray-800">(or 0 tonnes)</p>
+            <p class="text-sm text-gray-500 mt-4">(Average US footprint is ~16 tonnes per year)</p>
+        </div>
+
+    </div>
+
+    <script>
+        // Get elements from the page
+        const form = document.getElementById('calculator-form');
+        const resultContainer = document.getElementById('result-container');
+        const resultKg = document.getElementById('result-kg');
+        const resultTonnes = document.getElementById('result-tonnes');
+
+        // Emission Factors (from our Java code)
+        const ELECTRICITY_FACTOR = 0.37; // kg CO2e per kWh
+        const GAS_FACTOR = 5.3;         // kg CO2e per therm
+        const OIL_FACTOR = 10.18;       // kg CO2e per gallon
+        const GASOLINE_FACTOR = 8.89;   // kg CO2e per gallon
+        const FLIGHT_FACTOR = 0.18;     // kg CO2e per passenger-mile
+
+        // Listen for the form submission
+        form.addEventListener('submit', function(event) {
+            // Prevent the form from actually submitting and reloading the page
+            event.preventDefault();
+
+            // Get values from the form, or default to 0
+            const electricity = parseFloat(document.getElementById('electricity').value) || 0;
+            const gas = parseFloat(document.getElementById('gas').value) || 0;
+            const oil = parseFloat(document.getElementById('oil').value) || 0;
+            const milesDriven = parseFloat(document.getElementById('milesDriven').value) || 0;
+            const mpg = parseFloat(document.getElementById('mpg').value) || 0;
+            const milesFlown = parseFloat(document.getElementById('milesFlown').value) || 0;
+
+            // --- Calculations ---
+
+            // 1. Household Footprint
+            const householdFootprint = (electricity * ELECTRICITY_FACTOR) +
+                                     (gas * GAS_FACTOR) +
+                                     (oil * OIL_FACTOR);
+
+            // 2. Car Footprint
+            let carFootprint = 0;
+            if (mpg > 0) { // Avoid division by zero
+                const gallonsUsed = milesDriven / mpg;
+                carFootprint = gallonsUsed * GASOLINE_FACTOR;
+            }
+
+            // 3. Flight Footprint
+            const flightFootprint = milesFlown * FLIGHT_FACTOR;
+
+            // 4. Total Footprint
+            const totalFootprintKg = householdFootprint + carFootprint + flightFootprint;
+            const totalFootprintTonnes = totalFootprintKg / 1000.0;
+
+            // --- Display Results ---
+            resultKg.innerText = `${totalFootprintKg.toFixed(2)} kg`;
+            resultTonnes.innerText = `(or ${totalFootprintTonnes.toFixed(2)} tonnes)`;
+            
+            // Show the result container
+            resultContainer.classList.remove('hidden');
+        });
+    </script>
+
+</body>
+</html>
